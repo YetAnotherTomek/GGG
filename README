@@ -1,15 +1,26 @@
-GGG - Gap Gene Gillespie
-========================
+============================
+= GGG - Gap Gene Gillespie =
+============================
 
-Copyright (C) 2008-2012 by
-T. R. Sokolowski, T. Erdmann
+Copyright (C) 2008-2012 by TR Sokolowski, T Erdmann
 FOM Institute AMOLF, Amsterdam, The Netherlands
+under supervision by PR ten Wolde
 
-=======================
+For comments, questions, etc. please
+contact TR Sokolowski <sokolowski@amolf.nl>
 
-GGG is a program that allows for stochastic sampling
-of genetic interactions in the developing Drosophila
-embryo. It also can be used for stochastic sampling
+This software is free for scientific use.
+For any commercial use please contact the authors first.
+
+Please do not further distribute this code without
+seeking the permission of the authors.
+
+===============
+= DESCRIPTION =
+===============
+GGG is a program that was designed for stochastic sampling
+of genetic interactions in the early Drosophila embryo.
+However, it also can be used for stochastic sampling
 of reaction-diffusion processes in a discrete cylindrical
 geometry in general.
 
@@ -18,4 +29,53 @@ for chemical reactions with the Meso-RD method to implement
 a cylindrical array of reaction volumes that are coupled
 by diffusive interchange between them.
 
+The program takes a set of reaction-diffusion parameters
+and an initial configuration as an input. It then calculates
+reaction propensities from the reaction parameters and species
+concentrations to generate a next-event queue for the whole
+spatially resolved system. Diffusion events are treated as
+birth-and-death events with a rate calculated from the diffusion
+constant. The configurations are then updated successively
+and propensity functions are adjusted accordingly.
 
+A set of observed concentrations can be defined. These
+observables can also be sums of concentrations. For the
+defined set of observables the moments of the random variables
+are acummulated with a defined measurement-interval. At the
+end of the simulation the means and variances are calculated
+and written as output.
+
+The main purpose of our simulations was the detection of
+gene expression boundary fluctuations. The code therefore is
+capable to detect such boundaries and monitor the boundary
+crossings as a random variable. A corresponding histogram
+is generated as an estimate of the boundary position
+distribution and written as an output at the end of the
+simulation.
+
+================
+= INSTALLATION =
+================
+The program is written in C++ and can be compiled using
+the regular GNU C++ compiler.
+
+A makefile is contained in the public version of the code.
+
+==========================
+= COPYRIGHT & DISCLAIMER =
+==========================
+GGG - Gap Gene Gillespie Simulator
+Copyright (C) 2008-2012 by TR Sokolowski, T Erdmann
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
