@@ -60,6 +60,26 @@ The program is written in C++ and can be compiled using
 the regular GNU C++ compiler.
 
 A makefile is contained in the public version of the code.
+It takes several options:
+
+$ make [normal]
+	will create 32-bit architecture code with -O3 flag.
+	The output executable will be named gillespie.X .
+	This is the default: 'normal' can be left out.
+
+$ make x64
+	will create 64-bit architecture code with -O3 flag.
+	The output executable will be named gillespie.X64 .
+
+$ make debug
+	will create 32-bit architecture code with -O3 and -g3
+	flags, i.e. code prepared for debugging with gdb.
+	The output executable will be named gillespie.X .
+
+$ make debug64
+	will create 642-bit architecture code with -O3 and -g3
+	flags, i.e. code prepared for debugging with gdb.
+	The output executable will be named gillespie.X64 .
 
 ==========================
 = COPYRIGHT & DISCLAIMER =
