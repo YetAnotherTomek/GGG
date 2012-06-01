@@ -1,4 +1,0 @@
-GGG
-===
-
-Gap Gene Gillespie

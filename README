@@ -1,0 +1,21 @@
+GGG - Gap Gene Gillespie
+========================
+
+Copyright (C) 2008-2012 by
+T. R. Sokolowski, T. Erdmann
+FOM Institute AMOLF, Amsterdam, The Netherlands
+
+=======================
+
+GGG is a program that allows for stochastic sampling
+of genetic interactions in the developing Drosophila
+embryo. It also can be used for stochastic sampling
+of reaction-diffusion processes in a discrete cylindrical
+geometry in general.
+
+GGG combines the Gillespie next-event sampling algorithm
+for chemical reactions with the Meso-RD method to implement
+a cylindrical array of reaction volumes that are coupled
+by diffusive interchange between them.
+
+
