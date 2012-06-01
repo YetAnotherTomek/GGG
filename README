@@ -7,7 +7,7 @@ FOM Institute AMOLF, Amsterdam, The Netherlands
 under supervision by PR ten Wolde
 
 For comments, questions, etc. please
-contact TR Sokolowski <sokolowski@amolf.nl>
+contact TR Sokolowski <sokolowski@amolf.nl> .
 
 This software is free for scientific use.
 For any commercial use please contact the authors first.
@@ -77,7 +77,7 @@ $ make debug
 	The output executable will be named gillespie.X .
 
 $ make debug64
-	will create 642-bit architecture code with -O3 and -g3
+	will create 64-bit architecture code with -O3 and -g3
 	flags, i.e. code prepared for debugging with gdb.
 	The output executable will be named gillespie.X64 .
 
