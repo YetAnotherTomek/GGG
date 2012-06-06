@@ -15,6 +15,19 @@ For any commercial use please contact the authors first.
 Please do not further distribute this code without
 seeking the permission of the authors.
 
+If you use this code for scientific work please cite the
+publications that it was created for, and the work of the
+authors of the MesoRD method that we make use of:
+
+1. Sokolowski, Erdmann, ten Wolde,
+                PLoS Computational Biology (2012)
+2. Erdmann, Howard, ten Wolde,
+                Physical Review Letters 103: 258101 (2009)
+3. Hattne, Fange, Elf,
+                Bioinformatics 21: 2923-2924 (2005)
+4. Elf, Ehrenberg,
+                Systems Biology 1: 230-236 (2004)
+
 ===============
 = DESCRIPTION =
 ===============
@@ -63,23 +76,83 @@ A makefile is contained in the public version of the code.
 It takes several options:
 
 $ make [normal]
-	will create 32-bit architecture code with -O3 flag.
-	The output executable will be named gillespie.X .
-	This is the default: 'normal' can be left out.
+        will create 32-bit architecture code with -O3 flag.
+        The output executable will be named gillespie.X .
+        This is the default: 'normal' can be left out.
 
 $ make x64
-	will create 64-bit architecture code with -O3 flag.
-	The output executable will be named gillespie.X64 .
+        will create 64-bit architecture code with -O3 flag.
+        The output executable will be named gillespie.X64 .
 
 $ make debug
-	will create 32-bit architecture code with -O3 and -g3
-	flags, i.e. code prepared for debugging with gdb.
-	The output executable will be named gillespie.X .
+        will create 32-bit architecture code with -O3 and -g3
+        flags, i.e. code prepared for debugging with gdb.
+        The output executable will be named gillespie.X .
 
 $ make debug64
-	will create 64-bit architecture code with -O3 and -g3
-	flags, i.e. code prepared for debugging with gdb.
-	The output executable will be named gillespie.X64 .
+        will create 64-bit architecture code with -O3 and -g3
+        flags, i.e. code prepared for debugging with gdb.
+        The output executable will be named gillespie.X64 .
+
+=========
+= USAGE =
+=========
+To start a simulation a couple of input and initialization
+files have to be created. The location of these input files
+and the output files created by the program have to be specified
+in a runfile containing the filenames in the right order.
+The runfile then is passed as first argument to the executable.
+
+Specifically, the program requires the following files in
+addition to the runfile:
+
+- the "input" file which defines most of the relevant system
+  parameters, such as reaction and diffusion constants and
+  the initial condition.
+
+- the "temp" file; this file is relevant for interrupts and
+  temporary outputs of the whole state of the simulation (see
+  below for more information). The program first reads the
+  first two entries of this file, the first being the number n
+  of previous outputs / interrupts, the second the random seed.
+  Initially, n must be zero. If n>0, the program will attempt
+  to read the rest of the temp file, which will fail if it is
+  empty.
+
+- the "reactions" file which defines the reaction network(s)
+  used; this file has to follow a specific format convention
+  that can be understood by the parser.
+
+- the "observables" file; in this file the observable
+  species that will be monitored / measured during runtime
+  are defined. These can also be sums of species.
+
+The output created by the program depends on the simulation
+mode (see gillespie.cpp for details). The output file names
+have to be defined in the runfile in the right order.
+
+The program is capable of interrupts after a defined number of
+simulation steps and subsequent restarts from exactly the same
+state that was saved at interrupt. To that purpose temporary
+output files that store the complete set of information
+necessary for a full restart are created. This option should
+be used with care. See the start script for details.
+
+A Perl startscript (start_MR_system) that illustrates the 
+necessary requirements for a simulation start is included in 
+the online version of the code. This script automatically
+produces an initial condition and the required set of input
+variables, and then writes the input file, an initial dummy 
+temp file and the runfile. Finally, it starts the simulation.
+This can be repeated for different ranges of scaling factors
+for relevant system parameters.
+
+A simple (awk-based) analysis script to evaluate the boundary
+distributions written by the simulation is contained in the
+folder "Scripts". This script takes a list of boundary
+distribution files as an input which have to be in the right
+format. It outputs the boundary width (= standard deviation)
+and mean position as a function of the diffusion constant.
 
 ==========================
 = COPYRIGHT & DISCLAIMER =
