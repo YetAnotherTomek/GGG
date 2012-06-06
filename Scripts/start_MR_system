@@ -1,0 +1,587 @@
+#!/usr/bin/perl -w
+
+# ~~~~~~~~~~~~~~~~~~~~~ #
+#  T.R. Sokolowski      #
+#  T. Erdmann           #
+#  2009, 2011, 2012     #
+# ~~~~~~~~~~~~~~~~~~~~~ #
+
+# This modified version extends
+# the scheme to the case of two opposing
+# exponential activator gradients (Bcd, Caudal),
+# one anterior and one "mirrored" posterior,
+# and mutual repression of the products.
+#
+# Mutual repression of the products can be
+# switched off by setting the scaling factor
+# to zero, i.e. value "0" of the last parameter
+# range (see below).
+#
+# It also introduces autoactivation parameters.
+#
+# Used abbreviations:
+#
+# Bcd = Bicoid
+# Hb  = Hunchback
+# Cad = Caudal
+# Kni = Repressor
+#
+#
+# STANDARD CALL:        ./startAll 5 5 10 10 5 5  0  0 1   w/o repression
+#                       ./startAll 5 5 10 10 5 5 10 10 1   w.  repression
+#
+
+
+use Term::ANSIColor;
+
+# *****************
+# *** PARAMETERS ***
+# ******************
+# Read parameters passed to script
+# Parameter ranges are passed to the script as options
+$aa_start = $ARGV[0]; $aa_max = $ARGV[1];
+$bb_start = $ARGV[2]; $bb_max = $ARGV[3];
+$cc_start = $ARGV[4]; $cc_max = $ARGV[5];
+$dd_start = $ARGV[6]; $dd_max = $ARGV[7];
+
+# max_interrupts: If this is set to an integer value
+# bigger than one the simulation will interrupt after
+# 1/max_interrupts time and can be restarted again.
+# The complete memory state is written into temp_file
+# in this case; the sim restarts exactly at the same
+# position at which it was interrupted.
+$max_interrupts = $ARGV[8];
+
+# seed_offset can be used to start sets of identical
+# simulations / samples with an external master script.
+# The offest is added to the random seed defined in this
+# file.
+$seed_offset = $ARGV[9];
+if ("$ARGV[9]" eq "" ) {  $seed_offset=0;  }
+# Optional, for mass starts; set to zero by default
+print "Seed offset = $seed_offset\n";
+
+# Small definitions
+$s10 = sqrt(10.0);
+
+# *** ACTIVATOR AMPLITUDE FACTOR ***
+# Factors for Bcd gradient amplitude to scale activation position
+# The exponential function is multiplied by this factor
+$aa[0]  = 3.125000E-02;             # 1/32
+$aa[1]  = 6.250000E-02;             # 1/16
+$aa[2]  = 1.250000E-01;             # 1/8
+$aa[3]  = 2.500000E-01;             # 1/4
+$aa[4]  = 5.000000E-01;             # 1/2
+$aa[5]  = 1.000000E+00;             # 1
+$aa[6]  = 2.000000E+00;             # 2
+$aa[7]  = 4.000000E+00;             # 4
+$aa[8]  = 8.000000E+00;             # 8
+$aa[9]  = 1.600000E+01;             # 16
+$aa[10] = 3.200000E+01;             # 32
+$aa[11] = 6.400000E+01;             # 64
+$aa[12] = 1.280000E+02;             # 128
+
+# *** DIFFUSION CONSTANT FACTOR ***
+# Factors for Hb/Kni diffusion coefficient
+# The DC is multiplied by these numbers
+$bb[0]  = 0.00E+00;
+$bb[1]  = 1.00E-05*$s10;
+$bb[2]  = 1.00E-04;
+$bb[3]  = 1.00E-04*$s10;
+$bb[4]  = 1.00E-03;
+$bb[5]  = 1.00E-03*$s10;
+$bb[6]  = 1.00E-02;
+$bb[7]  = 1.00E-02*$s10;
+$bb[8]  = 1.00E-01;
+$bb[9]  = 1.00E-01*$s10;
+$bb[10] = 1.00E+00;
+$bb[11] = 1.00E+00*$s10;
+$bb[12] = 1.00E+01;
+$bb[13] = 1.00E+01*$s10;
+$bb[14] = 1.00E+02;
+$bb[15] = 1.00E+02*$s10;
+$bb[16] = 1.00E+03;
+$bb[17] = 1.00E+03*$s10;
+$bb[18] = 1.00E+04;
+$bb[19] = 1.00E+04*$s10;
+$bb[20] = 1.00E+05;
+
+# *** DYNAMICS FACTOR ***
+# Multiplicative factors for Hb and Kni prod. and degr. rates
+# all rates are multiplied by these factors
+$cc[0]  = 3.125000E-02;             # 1/32
+$cc[1]  = 6.250000E-02;             # 1/16
+$cc[2]  = 1.250000E-01;             # 1/8
+$cc[3]  = 2.500000E-01;             # 1/4
+$cc[4]  = 5.000000E-01;             # 1/2
+$cc[5]  = 1.000000E+00;             # 1
+$cc[6]  = 2.000000E+00;             # 2
+$cc[7]  = 4.000000E+00;             # 4
+$cc[8]  = 8.000000E+00;             # 8
+$cc[9]  = 1.600000E+01;             # 16
+$cc[10] = 3.200000E+01;             # 32
+$cc[11] = 6.400000E+01;             # 64
+$cc[12] = 1.280000E+02;             # 128
+
+# *** REPRESSION FACTOR ***
+# Factors for repression strength (scales koff for the repressors)
+# The off-rate is multiplied by those numbers,
+# except for parameter 0=no repression; then all rates are set to zero
+$dd[0]  = 0.00E+00;
+$dd[1]  = 1.00E-05*$s10;
+$dd[2]  = 1.00E-04;
+$dd[3]  = 1.00E-04*$s10;
+$dd[4]  = 1.00E-03;
+$dd[5]  = 1.00E-03*$s10;
+$dd[6]  = 1.00E-02;
+$dd[7]  = 1.00E-02*$s10;
+$dd[8]  = 1.00E-01;
+$dd[9]  = 1.00E-01*$s10;
+$dd[10] = 1.00E+00;
+$dd[11] = 1.00E+00*$s10;
+$dd[12] = 1.00E+01;
+$dd[13] = 1.00E+01*$s10;
+$dd[14] = 1.00E+02;
+$dd[15] = 1.00E+02*$s10;
+$dd[16] = 1.00E+03;
+$dd[17] = 1.00E+03*$s10;
+$dd[18] = 1.00E+04;
+$dd[19] = 1.00E+04*$s10;
+$dd[20] = 1.00E+05;
+
+
+# ********************
+# *** START ACTION ***
+# ********************
+# Copy and rename executable files
+$src_file = "gillespie";
+$xct_file = "GGG_MR";
+system("cp -v $src_file.X $xct_file.X");
+
+# Create the directory for this start
+$pwd = `pwd`;
+chomp($pwd);
+$dirname = "$pwd/Test"; # Enter run directory name here
+`mkdirhier $dirname/Run`;
+
+# Start the parameters loop
+# Generating a separate runfile for any set of scaling factors
+for ($aa_cnt = $aa_start; $aa_cnt <= $aa_max; $aa_cnt++)
+{
+  for ($bb_cnt = $bb_start; $bb_cnt <= $bb_max; $bb_cnt++)
+  {
+      for ($cc_cnt = $cc_start; $cc_cnt <= $cc_max; $cc_cnt++)
+      {
+          for ($dd_cnt = $dd_start; $dd_cnt <= $dd_max; $dd_cnt++)
+          {
+
+              # Copy executable
+              system("cp -v ./$xct_file.X $dirname/$xct_file.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt.X");
+
+              #########################
+              # CONSTRUCT THE RUNFILE #
+              #########################
+              # Set filenames
+              $prefix           = "$dirname/Run";
+              $runfile          = "$prefix/runfile.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              $input_file       = "$prefix/input.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              $end_input_file   = "$prefix/input.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt.end";
+              $reactions_file   = "$prefix/reactions.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              $observables_file = "$prefix/observables.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              $temp_file        = "$prefix/temp.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              $traject_file     = "$prefix/traject.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              $average_file     = "$prefix/average.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              $bnd_dst_file     = "$prefix/bnd_dst.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt";
+              
+              system("cp -v ./reactions_MR_system.dat $reactions_file");
+              system("cp -v ./observables_MR_system.dat $observables_file");
+
+              # Generate the runfile containing the filenames
+              open(RUNFILE, ">$runfile") or die "Cannot open runfile!\n";
+
+                  print RUNFILE $input_file, "\n";
+                  print RUNFILE $end_input_file, "\n";
+                  print RUNFILE $reactions_file,"\n";
+                  print RUNFILE $observables_file,"\n";
+                  print RUNFILE $temp_file, "\n";
+                  print RUNFILE $traject_file,"\n";
+                  print RUNFILE $average_file,"\n";
+                  print RUNFILE $bnd_dst_file,"\n";
+
+              close RUNFILE;
+
+              ##################################################
+              # NOW DEFINE THE VALUES PASSED TO THE INPUT FILE #
+              ##################################################
+              # * * * What to do ? * * *
+              $what_to_do = 2;
+              # $max_interrupts                   # set earlier in the script
+              $instant_outputs = 100;             
+              $output_all = 0;                    # if this is set to true, an instantaneous output is generated
+                                                  # at the end of each averaging
+              $random_seed = 123 + $seed_offset;  # seed for the mersenne twister random number generator;
+                                                  # the offset is useful for combined starts of identical sims              
+              # * * * Runtime stuff * * *
+              $rlx_time   = 1.0e+100;
+              $rlx_steps  = 1.00e+07;
+              $main_time   = 1.0e+100;
+              $main_steps  = 4.00e+07;
+              $meas_time   = 1.00e+00;
+              $meas_steps  = 1.00e+12;
+
+              $no_trajec  = 1.00e+00;
+
+              # * * * The System * * *                
+              $no_r_subv = 64.00e+00;
+              $no_z_subv = 64.00e+00;
+              $no_neig =   4.00e+00;
+              $dl =        8.50e+00;              # length scale / inter-nuclear distance
+
+              $no_reac =      2.02e+02;           # 202 reactions
+              $no_para =      3.40e+01;           # 34 parameters
+              $no_spec =      5.40e+01;           # 54 species
+              $no_obs =       1.20e+01;           # 12 measured/monitored species
+
+              # * * * Basic concentrations * * *
+              $bset = 6.90e+02;                   # 690 = Bcd copy no. at the enter of the embryo
+              $bcd_conc = $bset*$aa[$aa_cnt];
+              $nos_conc = $bset*$aa[$aa_cnt];
+              
+              # Predicted total copy numbers (N_monomers+2*N_dimers)
+              # Used to create the initial condition (Heaviside profiles)
+              $total_hbk_conc = 777;
+              $total_rep_conc = 777;
+
+              # * * * Reaction parameters * * *
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      $reac_parameter[$r_subv][$z_subv][0]  = 0.0E+00;                                    # Bcd injection rate (placeholder, not used yet)
+                      $reac_parameter[$r_subv][$z_subv][1]  = 0.0E+00;                                    # Bcd decay rate
+                      $reac_parameter[$r_subv][$z_subv][2]  = 3.37e+00*$cc[$cc_cnt];                      # Hb basal production rate
+                      $reac_parameter[$r_subv][$z_subv][3]  = 3.37e-02*$cc[$cc_cnt];                      # Hb decay rate
+                      $reac_parameter[$r_subv][$z_subv][4]  = 2.80e-03;                                   # kon  = diff. ltd. Bcd binding rate
+                      $koff0 = 6.825e+01;
+                      $reac_parameter[$r_subv][$z_subv][5]  = $koff0;                                     # koff = Bcd unbinding rate
+                      $reac_parameter[$r_subv][$z_subv][6]  = $koff0/(6.0e+00);                           # off-rate reduction after 2nd binding
+                      $reac_parameter[$r_subv][$z_subv][7]  = $koff0/(6.0e+00*6.0e+00);                   # off-rate reduction after 3rd binding
+                      $reac_parameter[$r_subv][$z_subv][8]  = $koff0/(6.0e+00*6.0e+00*6.0e+00);           # off-rate reduction after 4th binding
+                      $reac_parameter[$r_subv][$z_subv][9]  = $koff0/(6.0e+00*6.0e+00*6.0e+00*6.0e+00);   # off-rate reduction after 5th binding
+                      # Note: cooperativity of Hb activation (reactions 5,7,9,11,13) is tuned via the 
+                      # Bcd off-rate koff(j) = a/b^j which decreases with increasing number j of promoter-bound Bcd
+
+                      # Propensities for the mirrored (Nos) gradient
+                      # Most are the same as for Bcd for the sake of simplicity
+                      $reac_parameter[$r_subv][$z_subv][10]  = 0.0E+00;                                   # Cad injection rate
+                      $reac_parameter[$r_subv][$z_subv][11]  = 0.0E+00;                                   # Cad decay rate
+                      $reac_parameter[$r_subv][$z_subv][12]  = 3.37e+00*$cc[$cc_cnt];                     # Kni basal production rate
+                      $reac_parameter[$r_subv][$z_subv][13]  = 3.37e-02*$cc[$cc_cnt];                     # Kni decay rate
+                      $reac_parameter[$r_subv][$z_subv][14]  = 2.80e-03;                                  # kon  = diff. ltd. Nos binding rate
+                      $koff0 = 6.825e+01;
+                      $reac_parameter[$r_subv][$z_subv][15]  = $koff0;                                    # koff = Cad unbinding rate
+                      $reac_parameter[$r_subv][$z_subv][16]  = $koff0/(6.0e+00);                          # off-rate reduction after 2nd binding
+                      $reac_parameter[$r_subv][$z_subv][17]  = $koff0/(6.0e+00*6.0e+00);                  # off-rate reduction after 3rd binding
+                      $reac_parameter[$r_subv][$z_subv][18]  = $koff0/(6.0e+00*6.0e+00*6.0e+00);          # off-rate reduction after 4th binding
+                      $reac_parameter[$r_subv][$z_subv][19]  = $koff0/(6.0e+00*6.0e+00*6.0e+00*6.0e+00);  # off-rate reduction after 5th binding
+
+                      # Repression: Binding of dimers to other gene's promotor
+                      if($dd[$dd_cnt]>0){
+
+                      $reac_parameter[$r_subv][$z_subv][20]  = 2.80e-03;               # kon  of the repression
+                      $reac_parameter[$r_subv][$z_subv][21]  = 5.27e-03*$dd[$dd_cnt];  # koff of the repression
+                      $reac_parameter[$r_subv][$z_subv][22]  = 2.80e-03;
+                      $reac_parameter[$r_subv][$z_subv][23]  = 5.27e-03*$dd[$dd_cnt];  # same for the repression of the Kni promotor
+                      }
+                      else{   # $dd==0 means: no repression at all; in this special case, set all repressor rates to zero
+
+                                          $reac_parameter[$r_subv][$z_subv][20]  = 0.0e+00; # kon for the repressor
+                                          $reac_parameter[$r_subv][$z_subv][21]  = 0.0e+00;
+                                          $reac_parameter[$r_subv][$z_subv][22]  = 0.0e+00;
+                                          $reac_parameter[$r_subv][$z_subv][23]  = 0.0e+00; # same for the repression of the Kni promotor
+                      }
+                      
+                      # Dimerization reactions
+                      $reac_parameter[$r_subv][$z_subv][24]  = 5.60e-03; # dimerization forward rate
+                      $reac_parameter[$r_subv][$z_subv][25]  = 5.60e-03; # dimerization backward rate
+                      $reac_parameter[$r_subv][$z_subv][26]  = 3.37e-03*$cc[$cc_cnt];  # Hb dimers decay rate
+                      $reac_parameter[$r_subv][$z_subv][27]  = 3.37e-03*$cc[$cc_cnt];  # Kni dimers decay rate
+                                            
+                      #  Autoactivation: Binding of dimers to own promotor
+                      $reac_parameter[$r_subv][$z_subv][28]  = 0.00e+00; # rate of autoactivated Hb production
+                      $reac_parameter[$r_subv][$z_subv][29]  = 0.00e+00; # rate of autoactivated Kni production
+                      $reac_parameter[$r_subv][$z_subv][30]  = 0.00e+00; # Hb dimer binding rate
+                      $reac_parameter[$r_subv][$z_subv][31]  = 0.00e+00; # Hb dimer unbinding rate
+                      $reac_parameter[$r_subv][$z_subv][32]  = 0.00e+00; # Kni dimer binding rate
+                      $reac_parameter[$r_subv][$z_subv][33]  = 0.00e+00; # Kni dimer unbinding rate
+#                     Usual parameters with autoactivation:                      
+#                       $reac_parameter[$r_subv][$z_subv][28]  = 3.37e+00*$cc[$cc_cnt]; # rate of autoactivated Hb production
+#                       $reac_parameter[$r_subv][$z_subv][29]  = 3.37e+00*$cc[$cc_cnt]; # rate of autoactivated Kni production
+#                       $reac_parameter[$r_subv][$z_subv][30]  = 2.80e-03;              # Hb dimer binding rate
+#                       $reac_parameter[$r_subv][$z_subv][31]  = 5.27e-03*$dd[$dd_cnt]; # Hb dimer unbinding rate
+#                       $reac_parameter[$r_subv][$z_subv][32]  = 2.80e-03;              # Kni dimer binding rate
+#                       $reac_parameter[$r_subv][$z_subv][33]  = 5.27e-03*$dd[$dd_cnt]; # Kni dimer unbinding rate 
+                      
+                  }
+              }
+
+
+              # * * * Thresholds * * *
+              for ($spec = 0; $spec < $no_spec; $spec++)
+              {
+                  $threshold[$spec] = 0.0;
+              }
+              # Thresholds have to be specified for correct input reading;
+              # If all (!) thresholds are set to zero, the system will define
+              # them based on the observables concentrations after relaxation
+              # during runtime.
+              # This can be skipped by defining own thresholds in the input file.
+
+
+              # * * * Diffusion rate constants * * *
+              
+              $rep_DC_factor = 1.0;           # The Kni diffusion constant is by default the same as for Hb,
+                                              # but can be tuned by this prefactor
+                              
+              for($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                        # by default species are immobile
+                      for ($spec = 0; $spec < $no_spec; $spec++)
+                      {
+                          $diff_coeff[$r_subv][$z_subv][$spec] = 0.0E+00;
+                      }
+                      # Exceptions: Mobile species
+                      $diff_coeff[$r_subv][$z_subv][1]  = 3.2E-00*$bb[$bb_cnt];                    # Hb monomer, standard = Bcd diff. const.
+                      $diff_coeff[$r_subv][$z_subv][9]  = 3.2E-00*$bb[$bb_cnt] * $rep_DC_factor;   # Rep monomer
+                      $diff_coeff[$r_subv][$z_subv][28] = 3.2E-00*$bb[$bb_cnt];                    # Hb dimer
+                      $diff_coeff[$r_subv][$z_subv][29] = 3.2E-00*$bb[$bb_cnt] * $rep_DC_factor;   # Rep dimer
+                  }
+              }
+              # Rescale all the diffusion rate constants 
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      for ($spec = 0; $spec < $no_spec; $spec++)
+                      {
+                          $diff_rate_const[$r_subv][$z_subv][$spec] = $no_neig*$diff_coeff[$r_subv][$z_subv][$spec]/($dl*$dl);
+                      }
+                  }
+              }
+
+
+              # * * * Initial Configuration * * *              
+              # Exponential Bcd profile
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][0] = int($bcd_conc*exp(-($z_subv-0.5*($no_z_subv-1.0))*$dl/119.5)-3.0);
+                      # nuclei numbers are from 0 to no_z_subv-1, so we want it to be at bcd_conc at (no_z_subv/2)-1 + 1/2
+                      # Note: 3 transcription factors bound to promoters initially!
+                  }
+              }
+              # Heaviside Hb profile
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv <= $no_z_subv/2; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][1] = int($total_hbk_conc);
+                  }
+                  for ($z_subv = $no_z_subv/2; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][1] = 0;
+                  }
+
+              }
+              # Hb promotor: in the unrepressed, not-autoactivated state binding three Bcd
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][2] = 0;
+                      $config[$r_subv][$z_subv][3] = 0;
+                      $config[$r_subv][$z_subv][4] = 0;
+                      $config[$r_subv][$z_subv][5] = 1;
+                      $config[$r_subv][$z_subv][6] = 0;
+                      $config[$r_subv][$z_subv][7] = 0;
+                  }
+              }
+              # Now for the mirrored/posterior profile with identical (but mirrored) starting conditions
+              # Ascending (!) exponential Nos profile in the posterior part of the embryo
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][8] = int($nos_conc*exp(+($z_subv-0.5*($no_z_subv-1.0))*$dl/119.5)-3.0);
+                      # nuclei numbers are from 0 to no_z_subv-1, so we want it to be at nos_conc at (no_z_subv/2) - 1/2
+                      # Note: 3 transcription factors bound to promoters initially!
+                  }
+              }
+              # Heaviside Kni profile
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv <= $no_z_subv/2; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][9] = 0;
+                  }
+                  for ($z_subv = $no_z_subv/2; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][9] = int($total_rep_conc);
+                  }
+              }
+              # Kni promotor: in the unrepressed, not-autoactivated state binding three Nos
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      $config[$r_subv][$z_subv][10] = 0;	# Species 8 and 9 are Nos and Rep; promotor species start at 10
+                      $config[$r_subv][$z_subv][11] = 0;
+                      $config[$r_subv][$z_subv][12] = 0;
+                      $config[$r_subv][$z_subv][13] = 1;
+                      $config[$r_subv][$z_subv][14] = 0;
+                      $config[$r_subv][$z_subv][15] = 0;
+                  }
+              }
+              # All other species initially have zero copies
+              for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+              {
+                  for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                  {
+                      for ($spec = 16; $spec < $no_spec; $spec++)
+                      {
+                          $config[$r_subv][$z_subv][$spec] = 0;
+                      }
+                  }
+              }
+              
+
+              ########################
+              # WRITE THE INPUT FILE #
+              ########################              
+              # First open file
+              open(INPUT_FILE,">$input_file") or die "Cannot open input_file!\n";
+
+                  # Print a bunch of global parameters
+                  # Don't change the order here, it has to match the input routine!
+                  print INPUT_FILE "$what_to_do","\n";
+                  print INPUT_FILE "$max_interrupts","\n";
+                  print INPUT_FILE "$random_seed","\n";
+                  print INPUT_FILE "$rlx_time","\n";
+                  print INPUT_FILE "$main_time","\n";
+                  print INPUT_FILE "$meas_time","\n";
+                  print INPUT_FILE "$rlx_steps","\n";
+                  print INPUT_FILE "$main_steps","\n";
+                  print INPUT_FILE "$meas_steps","\n";
+                  print INPUT_FILE "$no_trajec","\n";
+
+                  print INPUT_FILE "$dl","\n";
+                  print INPUT_FILE "$no_r_subv","\n";
+                  print INPUT_FILE "$no_z_subv","\n";
+                  print INPUT_FILE "$no_reac","\n";
+                  print INPUT_FILE "$no_para","\n";
+                  print INPUT_FILE "$no_spec","\n";
+                  print INPUT_FILE "$no_obs","\n";
+
+                  print INPUT_FILE "$no_neig","\n";
+
+                  # Species-specific parameters
+                  # Thresholds
+                  for ($spec = 0; $spec < $no_spec; $spec++)
+                  {
+                      print INPUT_FILE "$threshold[$spec]","\n";
+                  }
+                  # Now the nucleus- and species-specific quantities follow
+                  # Reaction rate constants
+                  for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+                  {
+                      for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                      {
+                          for ($para = 0; $para < $no_para; $para++)
+                          {
+                              print INPUT_FILE "$reac_parameter[$r_subv][$z_subv][$para] ";
+                          }
+                          print INPUT_FILE "\n";
+                      }
+                  }
+                  # Diffusion rate constants
+                  for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+                  {
+                      for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                      {
+                          for ($spec = 0; $spec < $no_spec; $spec++)
+                          {
+                              print INPUT_FILE "$diff_rate_const[$r_subv][$z_subv][$spec] ";
+                          }
+                          print INPUT_FILE "\n";
+                      }
+                  }
+                  # Initial configurations
+                  for ($r_subv = 0; $r_subv < $no_r_subv; $r_subv++)
+                  {
+                      for ($z_subv = 0; $z_subv < $no_z_subv; $z_subv++)
+                      {
+                          for ($spec = 0; $spec < $no_spec; $spec++)
+                          {
+                              print INPUT_FILE "$config[$r_subv][$z_subv][$spec] ";
+                          }
+                          print INPUT_FILE "\n";
+                      }
+                  }
+                  
+                  # Flag for full or limited output
+                  print INPUT_FILE $output_all;
+                  print INPUT_FILE "\n";
+                  
+                  # Number of averaged snapshot outputs
+                  print INPUT_FILE $instant_outputs;
+                  print INPUT_FILE "\n";
+
+              close INPUT_FILE;
+              
+              
+              ##################################
+              # TEMPORARY OUTPUTS / INTERRUPTS #
+              ##################################
+              # Check whether there had been earlier output into the temp-file already.
+              # If yes, then this start is a re-start of an interrupted previous simulation.
+              if( -e "$temp_file")
+              {
+                  # If yes, copy it as a backup
+                  open(TEMP_FILE,"<$temp_file") or die "Cannot open temp_file!\n";
+                  $interrupts = <TEMP_FILE>;
+                  chomp($interrupts);
+                  system("cp $temp_file $temp_file.output.$interrupts");
+                  print "Temporary file says there were $interrupts previous interrupts ...\n";
+                  print "Copied $temp_file to backup file: $temp_file.output.$interrupts\n";
+              }
+              else
+              {
+                  # If not, write a minimal content temp file.
+                  # The program requires this as a default even without previous interrupts.
+                  # If the first value of the temp file is zero it will only read the random seed
+                  # and perform a start from scratch. If not, it would attempt to read the rest.
+                  open(TEMP_FILE,">$temp_file") or die "Cannot open minimal temp_file for output!\n";
+                  print TEMP_FILE "0","\n";
+                  print TEMP_FILE "$random_seed","\n";
+              }
+
+
+              ############
+              # START IT #
+              ############
+              print "Starting...\n";
+              system("$dirname/$xct_file.$aa_cnt.$bb_cnt.$cc_cnt.$dd_cnt.X $runfile &");
+
+              ########
+              # DONE #
+              ########
+              # End of instructions for this parameter set
+              # Go to next loop
+
+          }   # $dd_cnt
+      }       # $cc_cnt
+  }           # $bb_cnt
+}             # $aa_cnt
