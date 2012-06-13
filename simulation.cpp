@@ -213,7 +213,7 @@ void simulation::init(run_parameter* input){
         // Construct temporary averaging array for inst. outputs
         avg_obs_temp = new double[no_obs];
         
-        frame = 0;
+        framecount = 0;
     }
   
 }
@@ -497,7 +497,10 @@ void simulation::output_instant(run_parameter* input)
     
     // *** r-AVERAGES OF INSTANTANEOUS CONFIGURATION ***
     // First calculate the frame number
-    frame = (ac_run_step-(*input).rlx_steps) / instant_steps;
+    if( not (*input).output_all )      
+        frame = (ac_run_step-(*input).rlx_steps) / instant_steps;
+    else
+        frame = framecount;
     // Open file for this frame under right name
     strcpy(trav_name,(*input).traject_file);
     sprintf(tmp_string, ".frame%03u.average", frame);
@@ -551,7 +554,7 @@ void simulation::output_instant(run_parameter* input)
               
     // Reset instant flag to false to avoid output in the next loop
     instant_flag = false;
-    frame++;    
+    framecount++;    
     
 }
 

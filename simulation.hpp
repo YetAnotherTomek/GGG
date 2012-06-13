@@ -73,7 +73,8 @@ class simulation
       
       unsigned long N_measurements;     // monitors the number of performed measurements
       int interrupts;                   // contains no. of previous temporary outputs
-      int frame;			// monitors the no. of instantaneous outputs
+      int framecount;                   // monitors the no. of instantaneous outputs
+      int frame;                        // also used in that context
       
        // Variables needed for time control
       double last_time, next_time, meas_time;
