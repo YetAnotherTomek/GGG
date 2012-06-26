@@ -131,6 +131,15 @@ The output created by the program depends on the simulation
 mode (see gillespie.cpp for details). The output file names
 have to be defined in the runfile in the right order.
 
+In most operating modes the program will save files that
+contain instantaneous snapshots of the observables at n_instant
+equidistant timepoints of the main simulation time. In that
+case two types of trajectory files will be created: A series
+of n_instant files that contain the circumference average of
+the observables as a function of the axial coordinate of the
+cylinder and one file that contains the complete (non-averaged)
+data for all instantaneous timepoints.
+
 The program is capable of interrupts after a defined number of
 simulation steps and subsequent restarts from exactly the same
 state that was saved at interrupt. To that purpose temporary
@@ -146,6 +155,11 @@ variables, and then writes the input file, an initial dummy
 temp file and the runfile. Finally, it starts the simulation.
 This can be repeated for different ranges of scaling factors
 for relevant system parameters.
+As a default, the startscript requires that a 32-bit version
+compiled executable gillespie.X is in the directory from
+which it is started. Furthermore, this directory must contain
+the reactions and observables file specified in the script
+(reactions_MR_system.dat, observables_MR_system.dat).
 
 A simple (awk-based) analysis script to evaluate the boundary
 distributions written by the simulation is contained in the
@@ -153,6 +167,9 @@ folder "Scripts". This script takes a list of boundary
 distribution files as an input which have to be in the right
 format. It outputs the boundary width (= standard deviation)
 and mean position as a function of the diffusion constant.
+
+If you encounter any problems in the usage of GGG, please
+contact TR Sokolowski <sokolowski@amolf.nl>.
 
 ==========================
 = COPYRIGHT & DISCLAIMER =
